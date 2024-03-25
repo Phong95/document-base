@@ -1,0 +1,142 @@
+---
+sidebar_position: 1
+---
+
+# Put
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+export const Highlight = ({ children, color }) => (
+  <span
+    style={{
+      backgroundColor: color,
+      borderRadius: "10px",
+      color: "#fff",
+      padding: "5px",
+      cursor: "pointer",
+    }}
+  >
+    {children}
+  </span>
+);
+
+export const Dot = ({ color, children }) => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+    }}
+  >
+    <div
+      style={{
+        backgroundColor: color,
+        borderRadius: "5px",
+        height: "10px",
+        width: "10px",
+        color: color,
+        marginRight: "5px",
+      }}
+    ></div> {children}
+  </div>
+);
+
+<Highlight color="#FFC300">PUT</Highlight>{" "}
+
+`https://domain/api/fm-mobile/v2/c-{clientId}/p-{projectId}/invidual-reports`
+
+## Request Parameters
+
+| Name      | Description | Required                                        | Type   |
+| --------- | ----------- | ----------------------------------------------- | ------ |
+| clientId  |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| projectId |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+
+## Request Model
+
+| Name         | Description | Required                                        | Type   |
+| ------------ | ----------- | ----------------------------------------------- | ------ |
+| Id           |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| Title        |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| Description  |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| SpaceId      |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| DepartmentId |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+| AssetIds     |             | <Highlight color="#EE4B2B">Required</Highlight> | string |
+
+## Response
+
+| Code                           | Description        |
+| ------------------------------ | ------------------ |
+| <Dot color="#25c2a0">200</Dot> | Success.           |
+| <Dot color="#FFC300">401</Dot> | Unauthorized.      |
+| <Dot color="#FFC300">404</Dot> | Not Found.         |
+| <Dot color="#EE4B2B">500</Dot> | Error From Server. |
+
+## Response Model
+
+| Name             | Description | Type   |
+| ---------------- | ----------- | ------ |
+| ClientId         |             | string |
+| ProjectId        |             | string |
+| Space            |             | object |
+| Department       |             | object |
+| Title            |             | string |
+| Description      |             | string |
+| Type             |             | number |
+| ActionTypes      |             | array  |
+| CommentCount     |             | number |
+| FileCount        |             | number |
+| BudgetValue      |             | number |
+| CostValue        |             | number |
+| SeverityRated    |             | number |
+| SolvedRated      |             | number |
+| PICEmails        |             | array  |
+| ReceiveEventTime |             | number |
+| ApproveEventTime |             | number |
+| SolveEventTime   |             | number |
+| CloseEventTime   |             | number |
+| FixingEventTime  |             | number |
+| FixedEventTime   |             | number |
+
+## Example Usage
+
+<Tabs>
+<TabItem value="js" label="JavaScript">
+
+```js
+function helloWorld() {
+  console.log("Hello, world!");
+}
+```
+
+</TabItem>
+<TabItem value="c#" label=".Net">
+
+```c#
+def hello_world():
+print 'Hello, world!'
+```
+
+</TabItem>
+
+</Tabs>
+
+## Example Success Response
+
+```
+[
+  {
+    "id": 133024,
+    "name": "Mumbai"
+  },
+  ...
+]
+```
+
+## Example Error Response
+
+```
+{
+  "error'": "Unauthorized. You shouldn't be here."
+}
+```

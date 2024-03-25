@@ -1,0 +1,392 @@
+---
+sidebar_position: 5
+---
+# Sản phẩm
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+<Tabs>
+<TabItem value="service" label="API Service">
+
+``` typescript title="/src/api/ProductService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { ProductResponseModel } from "../model/product/ProductResponseModel";
+import { HttpService } from "./HttpService";
+
+class ProductApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetProduct = async (clientId: string, projectId: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/products/page/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<ProductResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<ProductResponseModel>> = await res.json();
+        return json;
+    }
+    SearchProduct = async (projectId: string,text:string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/p-${projectId}/search/product/${text}/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<ProductResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<ProductResponseModel>> = await res.json();
+        return json;
+    }
+
+}
+const productApi = new ProductApi();
+export default productApi;
+```
+
+</TabItem>
+
+<TabItem value="typescript" label="Component">
+
+``` typescript title="/src/components/product/ProductPage.tsx"
+import { View, Text, ScrollView, RefreshControl, Pressable, Platform, Image } from 'react-native'
+import React, { PropsWithChildren, useContext, useEffect, useState } from 'react'
+import { GlobalStyles } from '../../styles/GlobalStyles'
+import { TouchableRipple } from 'react-native-paper'
+import { NavigationContainerRef } from '../../navigation/GlobalNavigationContainer'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import { GlobalComponentsState } from '../../model/context/GlobalComponentsStateModel'
+import AppContext from '../../context/AppContext'
+import { useDispatch, useSelector } from 'react-redux'
+import { AuthenticateReduxModel } from '../../model/redux/AuthenticateReduxModel'
+import { ProductReduxModel } from '../../model/redux/ProductReduxModel'
+import { debounceTime, Subject } from 'rxjs'
+import { SetProductData, SetProductIndex, SetSearchProductData, SetSearchProductIndex, SetSelectedProduct } from '../../redux/actions/ProductAction'
+import productApi from '../../api/ProductService'
+import { Product } from '../../model/product/Product'
+import CustomInput from '../global/CustomInput'
+import CustomImage from '../global/CustomImage'
+import { useTranslation } from 'react-i18next'
+type ProductPageProps = PropsWithChildren<{
+    navigation?: any;
+    route?: any;
+}>;
+export default function ProductPage(props: ProductPageProps) {
+    const globalContext: GlobalComponentsState = useContext(AppContext);
+    const authenticateReduxData: AuthenticateReduxModel = useSelector(
+        (state: any) => state.AuthenticateReducer,
+    );
+    const productReduxModelData: ProductReduxModel = useSelector(
+        (state: any) => state.ProductReducer,
+    );
+    const dispatch = useDispatch<any>();
+    const [searchContent, setSearchContent] = useState('');
+    const [onSearch, setOnSearch] = useState(false);
+    const [isEmpty, setIsEmpty] = useState(false);
+    const { t } = useTranslation();
+
+    const changeHandler = new Subject<string>();
+    const unsubscribe = changeHandler
+        .asObservable()
+        .pipe(debounceTime(800))
+        .subscribe((val: string) => {
+            if (val && val.length > 2) {
+                retrieveSearchData(val);
+                setSearchContent(val);
+                setOnSearch(true);
+            } else {
+                retrieveData();
+                setOnSearch(false);
+            }
+        });
+    useEffect(() => {
+        if (productReduxModelData.products.total == 0)
+            retrieveData();
+        if (props.route && props.route.params.keyword) {
+            retrieveSearchData(props.route.params.keyword);
+            setSearchContent(props.route.params.keyword);
+            setOnSearch(true);
+        }
+        return () => {
+            if (unsubscribe) unsubscribe.unsubscribe();
+        };
+    }, [authenticateReduxData.selectedProject]);
+
+    //#region Retrieve Data
+    const retrieveData = async () => {
+        dispatch(SetProductIndex(0));
+
+        if (
+            authenticateReduxData.selectedClient &&
+            authenticateReduxData.selectedProject
+        ) {
+            let res = await productApi.GetProduct(authenticateReduxData.selectedClient.id, authenticateReduxData.selectedProject.id, 0);
+            if (res.successful) {
+                if (res.result) {
+                    let items = res.result.items.map(x => new Product(x));
+                    dispatch(SetProductData(res.result.total, items));
+                    if (items.length == 0) {
+                        setIsEmpty(true);
+                    }
+                } else {
+                    globalContext.openSnackbar(res.errorMessage);
+                }
+            } else {
+                globalContext.openSnackbar(`Retrieve product data: ${res.statusCode.toString()}`);
+            }
+        }
+    };
+    const retrieveMoreData = async () => {
+        if (
+            authenticateReduxData.selectedClient &&
+            authenticateReduxData.selectedProject &&
+            productReduxModelData.products.items.length <
+            productReduxModelData.products.total
+        ) {
+            dispatch(SetProductIndex(productReduxModelData.productPageIndex + 1));
+
+            let res = await productApi.GetProduct(
+                authenticateReduxData.selectedClient.id,
+                authenticateReduxData.selectedProject.id,
+                productReduxModelData.productPageIndex + 1,
+            );
+            if (res.successful) {
+                if (res.result) {
+                    let items = res.result.items.map(x => new Product(x));
+                    let all = productReduxModelData.products.items.concat(items);
+                    dispatch(SetProductData(res.result.total, all));
+                } else {
+                    globalContext.openSnackbar(res.errorMessage);
+                }
+            } else {
+                globalContext.openSnackbar(`Send data: ${res.statusCode.toString()}`);
+            }
+        }
+    };
+    //#endregion
+    //#region Retrieve Search Data
+    const retrieveSearchData = async (text: string) => {
+        dispatch(SetSearchProductIndex(0));
+
+        if (
+            authenticateReduxData.selectedClient &&
+            authenticateReduxData.selectedProject
+        ) {
+            let res = await productApi.SearchProduct(authenticateReduxData.selectedProject.id, text, 0);
+            if (res.successful) {
+                if (res.result) {
+                    let items = res.result.items.map(x => new Product(x));
+                    dispatch(SetSearchProductData(res.result.total, items));
+                } else {
+                    globalContext.openSnackbar(res.errorMessage);
+                }
+            } else {
+                globalContext.openSnackbar(`Retrieve asset data: ${res.statusCode.toString()}`);
+            }
+        }
+    };
+    const retrieveMoreSearchData = async (text: string) => {
+        if (
+            authenticateReduxData.selectedClient &&
+            authenticateReduxData.selectedProject &&
+            productReduxModelData.searchProducts.items.length <
+            productReduxModelData.searchProducts.total
+        ) {
+            dispatch(SetSearchProductIndex(productReduxModelData.searchProductPageIndex + 1));
+
+            let res = await productApi.SearchProduct(
+                authenticateReduxData.selectedProject.id,
+                text,
+                productReduxModelData.searchProductPageIndex + 1,
+            );
+            if (res.successful) {
+                if (res.result) {
+                    let items = res.result.items.map(x => new Product(x));
+                    let all = productReduxModelData.searchProducts.items.concat(items);
+                    dispatch(SetSearchProductData(res.result.total, all));
+                } else {
+                    globalContext.openSnackbar(res.errorMessage);
+                }
+            } else {
+                globalContext.openSnackbar(`Send data: ${res.statusCode.toString()}`);
+            }
+        }
+    };
+    //#endregion
+    const [refreshing, setRefreshing] = useState(false);
+    const onRefresh = async () => {
+        setRefreshing(true);
+        retrieveData();
+        setRefreshing(false);
+    };
+    function handleInfinityScroll(event: any) {
+        let mHeight = event.nativeEvent.layoutMeasurement.height;
+        let cSize = event.nativeEvent.contentSize.height;
+        let Y = event.nativeEvent.contentOffset.y;
+        if (Math.ceil(mHeight + Y) >= cSize) return true;
+        return false;
+    }
+    return (
+        <View style={[GlobalStyles.body, GlobalStyles.displayFlex, GlobalStyles.flexDirectionColumn, GlobalStyles.backGroundColorWhite]}>
+            <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter, GlobalStyles.justifyContentSpaceBetween]}>
+                <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter]}>
+                    <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                        NavigationContainerRef.goBack()
+                    }} style={{ padding: 10, borderRadius: 20 }}
+                    >
+                        <Icon
+                            name='arrow-left'
+                            color='black'
+                            size={24}
+                        />
+                    </TouchableRipple>
+                    <Text style={{ fontSize: 20, fontWeight: '600' }}>{t("Product.Product")}</Text>
+                </View>
+
+                <Text style={{ paddingRight: 10 }}>({onSearch ? productReduxModelData.searchProducts.total : productReduxModelData.products.total})</Text>
+            </View>
+            <CustomInput value={(props.route && props.route.params.keyword) && props.route.params.keyword} onChangeText={(text) => {
+                changeHandler.next(text);
+
+            }} affixIcon='magnify' style={{
+                borderWidth: 1,
+                borderColor: 'rgba(0,0,0,0.2)',
+            }} placeHolderColor='#303030' placeholder={t("Search.Search")}></CustomInput>
+            {Platform.OS === 'android' ?
+                <ScrollView
+                    onScroll={async event => {
+                        if (handleInfinityScroll(event)) {
+                            onSearch ? await retrieveMoreSearchData(searchContent) : await retrieveMoreData();
+                        }
+                    }}
+                    scrollEventThrottle={1000}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                    style={{ paddingTop: 10 }}>
+                    {onSearch ? (
+                        productReduxModelData.searchProducts.items.length > 0 && productReduxModelData.searchProducts.items.map((x: Product, index: number) => {
+                            return <Pressable style={[
+                                GlobalStyles.flexDirectionRow,
+                                GlobalStyles.justifyContentSpaceBetween,
+                                GlobalStyles.shadow,
+                                GlobalStyles.backGroundColorWhite,
+                                GlobalStyles.alignItemsCenter,
+                                { paddingTop: 2.5 },
+                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+                            ]} key={index} onPress={() => { dispatch(SetSelectedProduct(x)); NavigationContainerRef.navigate("ProductModal") }}>
+                                <View>
+                                    <Text>{x.code}</Text>
+                                    <Text>{x.name}</Text>
+                                    <Text>{t("Product.Quantity")}: {x.quantityAsset}/{x.quantity}</Text>
+
+                                </View>
+                                {x.imageRootPathUrl && <CustomImage maxWidth={100} uri={x.imageRootPathUrl}></CustomImage>}
+                            </Pressable>
+                        })
+                    ) :
+                        (
+                            productReduxModelData.products.items.length > 0 && productReduxModelData.products.items.map((x: Product, index: number) => {
+                                return <Pressable style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                    GlobalStyles.shadow,
+                                    GlobalStyles.backGroundColorWhite,
+                                    GlobalStyles.alignItemsCenter,
+                                    { paddingTop: 2.5 },
+                                    { marginBottom: 5, padding: 5, borderRadius: 10 }
+                                ]} key={index} onPress={() => { dispatch(SetSelectedProduct(x)); NavigationContainerRef.navigate("ProductModal") }}>
+                                    <View style={[GlobalStyles.spacer]}>
+                                        <Text>{x.code}</Text>
+                                        <Text>{x.name}</Text>
+                                        <Text>{t("Product.Quantity")}: {x.quantityAsset}/{x.quantity}</Text>
+
+                                    </View>
+                                    {x.imageRootPathUrl && <CustomImage maxWidth={100} uri={x.imageRootPathUrl}></CustomImage>}
+                                </Pressable>
+                            })
+                        )}
+                    {isEmpty && <View
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}>
+                        <Image style={{ height: 150, width: 250 }} source={require('../../../assets/img/empty.png')}></Image>
+                        <Text style={{ fontSize: 18 }}>This project do not contains any product.</Text>
+                    </View>}
+                </ScrollView> : <ScrollView onTouchEnd={async (e) => { onSearch ? await retrieveMoreSearchData(searchContent) : await retrieveMoreData(); }}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                    style={{ paddingTop: 10 }}>
+                    {onSearch ? (
+                        productReduxModelData.searchProducts.items.length > 0 && productReduxModelData.searchProducts.items.map((x: Product, index: number) => {
+                            return <Pressable style={[
+                                GlobalStyles.flexDirectionRow,
+                                GlobalStyles.justifyContentSpaceBetween,
+                                GlobalStyles.shadow,
+                                GlobalStyles.backGroundColorWhite,
+                                GlobalStyles.alignItemsCenter,
+                                { paddingTop: 2.5 },
+                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+                            ]} key={index} onPress={() => { dispatch(SetSelectedProduct(x)); NavigationContainerRef.navigate("ProductModal") }}>
+                                <View>
+                                    <Text>{x.code}</Text>
+                                    <Text>{x.name}</Text>
+                                    <Text>{t("Product.Quantity")}: {x.quantityAsset}/{x.quantity}</Text>
+
+                                </View>
+                                {x.imageRootPathUrl && <CustomImage maxWidth={100} uri={x.imageRootPathUrl}></CustomImage>}
+                            </Pressable>
+                        })
+                    ) :
+                        (
+                            productReduxModelData.products.items.length > 0 && productReduxModelData.products.items.map((x: Product, index: number) => {
+                                return <Pressable style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                    GlobalStyles.shadow,
+                                    GlobalStyles.backGroundColorWhite,
+                                    GlobalStyles.alignItemsCenter,
+                                    { paddingTop: 2.5 },
+                                    { marginBottom: 5, padding: 5, borderRadius: 10 }
+                                ]} key={index} onPress={() => { dispatch(SetSelectedProduct(x)); NavigationContainerRef.navigate("ProductModal") }}>
+                                    <View style={[GlobalStyles.spacer]}>
+                                        <Text>{x.code}</Text>
+                                        <Text>{x.name}</Text>
+                                        <Text>{t("Product.Quantity")}: {x.quantityAsset}/{x.quantity}</Text>
+                                    </View>
+                                    {x.imageRootPathUrl && <CustomImage maxWidth={100} uri={x.imageRootPathUrl}></CustomImage>}
+                                </Pressable>
+                            })
+                        )}
+                    {isEmpty && <View
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}>
+                        <Image style={{ height: 150, width: 250 }} source={require('../../../assets/img/empty.png')}></Image>
+                        <Text style={{ fontSize: 18 }}>{t("Product.Empty")}</Text>
+                    </View>}
+                </ScrollView>}
+        </View>
+    )
+}
+```
+
+</TabItem>
+
+
+</Tabs>
+

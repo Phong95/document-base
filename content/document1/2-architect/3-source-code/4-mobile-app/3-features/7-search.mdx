@@ -1,0 +1,502 @@
+---
+sidebar_position: 7
+---
+# Tìm kiếm
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+<Tabs>
+<TabItem value="service" label="API Service">
+
+``` typescript title="/src/api/SearchService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { SearchResultResponseModel } from "../model/search/SearchResultResponseModel";
+import { HttpService } from "./HttpService";
+
+class SearchApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    Search = async (projectId: string,text:string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/p-${projectId}/search/${text}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<SearchResultResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<SearchResultResponseModel> = await res.json();
+        return json;
+    }
+
+
+}
+const searchApi = new SearchApi();
+export default searchApi;
+```
+
+</TabItem>
+
+<TabItem value="typescript" label="Component">
+
+``` typescript title="/src/components/search/SearchPage.tsx"
+import { View, Text, Pressable, ScrollView, Platform } from 'react-native'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
+import { GlobalStyles } from '../../../styles/GlobalStyles'
+import { Avatar, Paragraph, TouchableRipple } from 'react-native-paper'
+import { NavigationContainerRef } from '../../../navigation/GlobalNavigationContainer'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import CustomInput from '../../global/CustomInput'
+import { useTranslation } from 'react-i18next'
+import { GlobalTheme } from '../../../styles/GlobalThemes'
+import { FMInvidualReport } from '../../../model/invidual-report/FMInvidualReport'
+import { format } from 'date-fns'
+import { Asset } from '../../../model/asset/Asset'
+import { Product } from '../../../model/product/Product'
+import { useFocusEffect } from '@react-navigation/native'
+import { debounceTime, Subject } from 'rxjs'
+import searchApi from '../../../api/SearchService'
+import { AuthenticateReduxModel } from '../../../model/redux/AuthenticateReduxModel'
+import { useDispatch, useSelector } from 'react-redux'
+import { GlobalComponentsState } from '../../../model/context/GlobalComponentsStateModel'
+import AppContext from '../../../context/AppContext'
+import { SetSelectedReport } from '../../../redux/actions/ReportAction'
+import { SetSelectedAsset } from '../../../redux/actions/AssetAction'
+import { Space } from '../../../model/space/Space'
+import { SetSelectedProduct } from '../../../redux/actions/ProductAction'
+import { SearchReduxModel } from '../../../model/redux/SearchReduxModel'
+import { SetSearchData } from '../../../redux/actions/SearchAction'
+import { SearchResult } from '../../../model/search/SearchResult'
+import SearchSkeleton from './SearchSkeleton'
+import { SetSelectedReport2 } from '../../../redux/actions/ReportAction2'
+import { InvidualReport2 } from '../../../model/invidual-report-2/invidual_report_v2.model'
+
+export default function Search() {
+    const authenticateReduxData: AuthenticateReduxModel = useSelector((state: any) => state.AuthenticateReducer);
+    const searchReduxData: SearchReduxModel = useSelector((state: any) => state.SearchReducer);
+
+    const globalContext: GlobalComponentsState = useContext(AppContext);
+    const dispatch = useDispatch<any>();
+    const [keyword, setKeyword] = useState<string>();
+    const [onLoading, setOnLoading] = useState(false);
+
+    const changeHandler = new Subject<string>();
+    let subscription = changeHandler
+        .asObservable()
+        .pipe(debounceTime(800))
+        .subscribe(async (res: string) => {
+            if (res && res.length > 2) {
+                setOnLoading(true)
+                setKeyword(res)
+                let searchRes = await searchApi.Search(authenticateReduxData.selectedProject!.id, res);
+                if (searchRes && searchRes.result) {
+                    dispatch(SetSearchData((new SearchResult(searchRes.result))));
+                }
+                setOnLoading(false)
+
+            } else {
+                dispatch(SetSearchData(null));
+            }
+        });
+    //#region Language
+    const { t } = useTranslation();
+    //#endregion
+    useEffect(() => {
+        return;
+    }, [searchReduxData.result])
+    useFocusEffect(
+        useCallback(() => {
+            console.log('search mount');
+
+            return () => {
+                console.log('search unmount');
+                if (subscription) {
+                    subscription.unsubscribe();
+                }
+            };
+        }, []),
+    );
+    return (
+        <View style={[GlobalStyles.body, GlobalStyles.displayFlex, GlobalStyles.flexDirectionColumn, GlobalStyles.backGroundColorWhite]}>
+            <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter]}>
+                <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                    NavigationContainerRef.navigate("Home")
+                }} style={{ padding: 10, borderRadius: 20 }}
+                >
+                    <Icon
+                        name='arrow-left'
+                        color='black'
+                        size={24}
+                    />
+                </TouchableRipple>
+                <Text style={{ fontSize: 20, fontWeight: '600' }}>{t("Search.Header")}</Text>
+
+            </View>
+            <CustomInput onChangeText={(text) => {
+                changeHandler.next(text);
+
+            }} affixIcon='magnify' style={{
+                borderWidth: 1,
+                borderColor: 'rgba(0,0,0,0.2)',
+            }} placeHolderColor='#303030' placeholder={t("Search.Search")}></CustomInput>
+            {onLoading ? <View style={[{ margin: 10 }]}>
+                <View
+                    style={[
+                        GlobalStyles.flexDirectionRow,
+                        GlobalStyles.justifyContentSpaceBetween,
+                        { paddingBottom: 10 }
+                    ]}>
+                    <Paragraph style={{ fontWeight: '600' }}>
+                        {t('Search.Reports')}
+                    </Paragraph>
+                    <View style={[GlobalStyles.flexDirectionRow]}>
+                        <Pressable
+                            onPress={() => {
+                                // globalContext.setKeyword(searchValue);
+                                // navigationRef.navigate('ReportSearch');
+                            }}>
+                            <Paragraph
+                                style={[
+                                    { fontWeight: '600', color: GlobalTheme.colors.primary },
+                                ]}>
+                                {t('Search.SeeAll')}
+                            </Paragraph>
+                        </Pressable>
+                    </View>
+                </View>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <View
+                    style={[
+                        GlobalStyles.flexDirectionRow,
+                        GlobalStyles.justifyContentSpaceBetween,
+                        { paddingBottom: 10 }
+
+                    ]}>
+                    <Paragraph style={{ fontWeight: '600' }}>
+                        {t('Search.Assets')}
+                    </Paragraph>
+                    <View style={[GlobalStyles.flexDirectionRow]}>
+
+                        <Pressable
+                            onPress={() => {
+                                NavigationContainerRef.navigate("AssetPage", { keyword: keyword })
+                            }}>
+                            <Paragraph
+                                style={[
+                                    { fontWeight: '600', color: GlobalTheme.colors.primary }
+                                ]}>
+                                {t('Search.SeeAll')}
+                            </Paragraph>
+                        </Pressable>
+                    </View>
+                </View>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+                <SearchSkeleton></SearchSkeleton>
+            </View> : <View style={[GlobalStyles.spacer]}>
+                {searchReduxData.result && <ScrollView style={[GlobalStyles.spacer]}>
+                    {searchReduxData.result?.reports?.items?.length > 0 && (
+                        <View
+                            style={[GlobalStyles.flexDirectionColumn, { margin: 10 }]}>
+                            <View
+                                style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                    { paddingBottom: 10 }
+                                ]}>
+                                <Paragraph style={{ fontWeight: '600' }}>
+                                    {t('Search.Reports')}
+                                </Paragraph>
+                                <View style={[GlobalStyles.flexDirectionRow]}>
+                                    <Paragraph>
+                                        ({searchReduxData.result.reports.items.length}/
+                                        {searchReduxData.result.reports?.total}){' '}
+                                    </Paragraph>
+                                    <Pressable
+                                        onPress={() => {
+                                            // globalContext.setKeyword(searchValue);
+                                            // navigationRef.navigate('ReportSearch');
+                                        }}>
+                                        <Paragraph
+                                            style={[
+                                                { fontWeight: '600', color: GlobalTheme.colors.primary },
+                                            ]}>
+                                            {t('Search.SeeAll')}
+                                        </Paragraph>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            {searchReduxData.result.reports.items.map(
+                                (x: InvidualReport2, index: number) => {
+                                    return (
+                                        <Pressable
+                                            onPress={() => {
+                                                dispatch(SetSelectedReport2(x));
+                                                NavigationContainerRef.navigate("Report2");
+                                                // navigationRef.navigate(
+                                                //     'InvidualReportNotification',
+                                                // );
+                                            }}
+                                            key={index}
+                                            style={[
+                                                GlobalStyles.flexDirectionRow,
+                                                GlobalStyles.justifyContentSpaceBetween,
+                                                GlobalStyles.shadow,
+                                                GlobalStyles.backGroundColorWhite,
+                                                GlobalStyles.alignItemsCenter,
+                                                { paddingTop: 2.5 },
+                                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+                                            ]}>
+                                            <View
+                                                style={[
+                                                    GlobalStyles.flexDirectionRow,
+                                                    GlobalStyles.alignItemsCenter,
+                                                ]}>
+                                                {x.firstUserPhotoImgSrc.length > 0 ? <Avatar.Image size={40} source={{ uri: x.firstUserPhotoImgSrc }} /> : <View style={[{ height: 40, width: 40, borderRadius: 20, backgroundColor: '#c1eff4' }, GlobalStyles.displayFlex, GlobalStyles.justifyContentCenter, GlobalStyles.alignItemsCenter]}>
+                                                    <Text style={{ fontSize: 20, textTransform: 'uppercase', fontWeight: '700', color: GlobalTheme.colors.primary }}>{x.firstUserEmail.charAt(0)}</Text>
+                                                </View>}
+
+                                                {/* <InvidualReportUserAvatar
+                                                size={30}
+                                                report={x}></InvidualReportUserAvatar> */}
+                                                <View
+                                                    style={[
+                                                        GlobalStyles.flexDirectionColumn,
+                                                        {
+                                                            paddingLeft: 5,
+                                                        },
+                                                    ]}>
+                                                    <Paragraph
+                                                        style={{ fontWeight: '500', lineHeight: 15 }}>
+                                                        {x.title}
+                                                    </Paragraph>
+                                                    <Paragraph
+                                                        style={{ fontSize: 12, lineHeight: 12 }}>
+                                                        {x.space.name}
+                                                    </Paragraph>
+                                                </View>
+                                            </View>
+                                            <Paragraph style={{ fontSize: 12 }}>
+                                                {format(x.firstDate, 'dd/MM/yyyy')}
+                                            </Paragraph>
+                                        </Pressable>
+                                    );
+                                },
+                            )}
+                        </View>
+                    )}
+                    {searchReduxData.result?.assets?.items?.length > 0 && (
+                        <View
+                            style={[GlobalStyles.flexDirectionColumn, { margin: 10 }]}>
+                            <View
+                                style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                    { paddingBottom: 10 }
+
+                                ]}>
+                                <Paragraph style={{ fontWeight: '600' }}>
+                                    {t('Search.Assets')}
+                                </Paragraph>
+                                <View style={[GlobalStyles.flexDirectionRow]}>
+                                    <Paragraph>
+                                        ({searchReduxData.result.assets.items.length}/
+                                        {searchReduxData.result.assets.total}){' '}
+                                    </Paragraph>
+                                    <Pressable
+                                        onPress={() => {
+                                            NavigationContainerRef.navigate("AssetPage", { keyword: keyword })
+                                        }}>
+                                        <Paragraph
+                                            style={[
+                                                { fontWeight: '600', color: GlobalTheme.colors.primary }
+                                            ]}>
+                                            {t('Search.SeeAll')}
+                                        </Paragraph>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            {searchReduxData.result.assets.items.map(
+                                (x: Asset, index: number) => {
+                                    return (
+                                        <Pressable
+                                            onPress={() => {
+                                                dispatch(SetSelectedAsset(x)); NavigationContainerRef.navigate("AssetModal")
+
+                                            }}
+                                            key={index}
+                                            style={[
+                                                GlobalStyles.flexDirectionRow,
+                                                GlobalStyles.justifyContentSpaceBetween,
+                                                GlobalStyles.shadow,
+                                                GlobalStyles.backGroundColorWhite,
+                                                GlobalStyles.alignItemsCenter,
+                                                { paddingTop: 2.5 },
+                                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+
+                                            ]}>
+                                            <View
+                                                style={[
+                                                    GlobalStyles.flexDirectionColumn,
+                                                    { flex: 1, padding: 5 }, { borderRadius: 10 }
+                                                ]}>
+                                                <Paragraph
+                                                    style={{ fontWeight: '500', lineHeight: 15 }}>
+                                                    {x.name}
+                                                </Paragraph>
+                                                <Paragraph style={{ fontSize: 12, lineHeight: 12 }}>
+                                                    {x.code}
+                                                </Paragraph>
+                                                <Paragraph style={{ fontSize: 12, lineHeight: 12 }}>
+                                                    {x.space!.name}
+                                                </Paragraph>
+                                            </View>
+
+                                        </Pressable>
+                                    );
+                                },
+                            )}
+                        </View>
+                    )}
+                    {searchReduxData.result?.products?.items?.length > 0 && (
+                        <View
+                            style={[GlobalStyles.flexDirectionColumn, { margin: 10 }]}>
+                            <View
+                                style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                ]}>
+                                <Paragraph style={{ fontWeight: '600' }}>
+                                    {t('Search.Products')}
+                                </Paragraph>
+                                <View style={[GlobalStyles.flexDirectionRow]}>
+                                    <Paragraph>
+                                        ({searchReduxData.result.products.items.length}/
+                                        {searchReduxData.result.products.total}){' '}
+                                    </Paragraph>
+                                    <Pressable
+                                        onPress={() => {
+                                            NavigationContainerRef.navigate('ProductPage', { keyword: keyword })
+                                        }}
+                                    >
+                                        <Paragraph
+                                            style={[
+                                                { fontWeight: '600', color: GlobalTheme.colors.primary },
+                                            ]}>
+                                            {t('Search.SeeAll')}
+                                        </Paragraph>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            {searchReduxData.result.products.items.map(
+                                (x: Product, index: number) => {
+                                    return (
+                                        <Pressable
+                                            onPress={() => {
+                                                dispatch(SetSelectedProduct(x)); NavigationContainerRef.navigate("ProductModal")
+                                            }}
+                                            key={index}
+                                            style={[
+                                                GlobalStyles.flexDirectionRow,
+                                                GlobalStyles.justifyContentSpaceBetween,
+                                                GlobalStyles.shadow,
+                                                GlobalStyles.backGroundColorWhite,
+                                                GlobalStyles.alignItemsCenter,
+                                                { paddingTop: 2.5 },
+                                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+                                            ]}>
+                                            <Paragraph>{x.name}</Paragraph>
+                                            <Paragraph style={{ fontSize: 12 }}>
+                                                {x.manufacturer?.name}
+                                            </Paragraph>
+                                        </Pressable>
+                                    );
+                                },
+                            )}
+                        </View>
+                    )}
+                    {searchReduxData.result?.spaces?.items?.length > 0 && (
+                        <View
+                            style={[GlobalStyles.flexDirectionColumn, { margin: 10 }]}>
+                            <View
+                                style={[
+                                    GlobalStyles.flexDirectionRow,
+                                    GlobalStyles.justifyContentSpaceBetween,
+                                ]}>
+                                <Paragraph style={{ fontWeight: '600' }}>
+                                    {t('Search.Spaces')}
+                                </Paragraph>
+                                <View style={[GlobalStyles.flexDirectionRow]}>
+                                    <Paragraph>
+                                        ({searchReduxData.result.spaces.items.length}/
+                                        {searchReduxData.result.spaces.total}){' '}
+                                    </Paragraph>
+                                    <Pressable
+                                        onPress={() => {
+                                            // globalContext.setKeyword(searchValue);
+                                            // navigationRef.navigate('ProductSearch');
+                                        }}
+                                    >
+                                        <Paragraph
+                                            style={[
+                                                { fontWeight: '600', color: GlobalTheme.colors.primary },
+                                            ]}>
+                                            {t('Search.SeeAll')}
+                                        </Paragraph>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            {searchReduxData.result.spaces.items.map(
+                                (x: Space, index: number) => {
+                                    return (
+                                        <Pressable
+                                            onPress={() => {
+                                                // globalContext.setProduct(x);
+                                                // navigationRef.navigate('InvidualProduct');
+                                            }}
+                                            key={index}
+                                            style={[
+                                                GlobalStyles.flexDirectionRow,
+                                                GlobalStyles.justifyContentSpaceBetween,
+                                                GlobalStyles.shadow,
+                                                GlobalStyles.backGroundColorWhite,
+                                                GlobalStyles.alignItemsCenter,
+                                                { paddingTop: 2.5 },
+                                                { marginBottom: 5, padding: 5, borderRadius: 10 }
+                                            ]}>
+                                            <Paragraph>{x.name}</Paragraph>
+                                            <Paragraph style={{ fontSize: 12 }}>
+                                                {x.typeName}
+                                            </Paragraph>
+                                        </Pressable>
+                                    );
+                                },
+                            )}
+                        </View>
+                    )}
+                </ScrollView>}
+            </View>}
+
+
+        </View>
+    )
+}
+
+
+```
+
+</TabItem>
+
+
+</Tabs>
+

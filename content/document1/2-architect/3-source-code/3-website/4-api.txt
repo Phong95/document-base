@@ -1,0 +1,1160 @@
+---
+sidebar_position: 4
+---
+
+# API
+
+## Base API
+Tất cả các service đều kế thừa class HttpService.ts
+
+``` typescript title="/src/api/HttpService.ts"
+export class HttpService {
+    constructor() { }
+    Get = async (url: string, token?: string) => {
+        return await fetch(this.baseurl + url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token ? token : (await this.GetToken())}`,
+            },
+        }).catch((res) => {
+            let response: any = new Response();
+            response.status = 5001;
+            return response;
+        });
+
+
+    };
+    Post = async (url: string, model?: Object, formData?: FormData) => {
+        return await fetch(this.baseurl + url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': formData ? 'multipart/form-data' : 'application/json',
+                Authorization: `Bearer ${await this.GetToken()}`,
+            },
+            body: formData ? formData : JSON.stringify(model),
+        }).catch((res) => {
+            let response: any = new Response();
+            response.status = 5001;
+            return response;
+        });
+
+
+    }
+    Put = async (url: string, model?: Object) => {
+        return await fetch(this.baseurl + url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${await this.GetToken()}`,
+            },
+            body: JSON.stringify(model),
+        }).catch((res) => {
+            let response: any = new Response();
+            response.status = 5001;
+            return response;
+        });
+
+
+
+    }
+    Delete = async (url: string, model?: Object) => {
+        return await fetch(this.baseurl + url, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${await this.GetToken()}`,
+            },
+            body: JSON.stringify(model),
+        }).catch((res) => {
+            let response: any = new Response();
+            response.status = 5001;
+            return response;
+        });
+
+
+    }
+
+}
+
+```
+
+## Asset
+
+``` typescript title="/src/api/AssetService.ts"
+import { AssetActionPostModel } from "../model/asset/AssetActionPostModel";
+import { AssetActionResponseModel } from "../model/asset/AssetActionReponseModel";
+import { AssetResponseModel } from "../model/asset/AssetResponseModel";
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { HttpService } from "./HttpService";
+
+class AssetApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetAsset = async (clientId: string, projectId: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/page-${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<AssetResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<AssetResponseModel>> = await res.json();
+        return json;
+    };
+    GetAssetBySpace = async (clientId: string, projectId: string, spaceId: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/space-${spaceId}/page-${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<AssetResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<AssetResponseModel>> = await res.json();
+        return json;
+    };
+    SearchAsset = async (projectId: string, text: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/p-${projectId}/search/asset/${text}/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<AssetResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<AssetResponseModel>> = await res.json();
+        return json;
+    };
+    SearchAssetBySpace = async (clientId: string, projectId: string, spaceId:string, text: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/space-${spaceId}/search/${text}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<AssetResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<AssetResponseModel>> = await res.json();
+        return json;
+    };
+    GetAssetActions = async (clientId: String, projectId: String, assetId: String) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/actions/${assetId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<AssetActionResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<AssetActionResponseModel[]> = await res.json();
+        return json;
+    };
+    FindAsset = async (clientId: string, projectId: string, assetCode: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/${assetCode}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<AssetResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<AssetResponseModel> = await res.json();
+        return json;
+
+    };
+    PostAction = async (clientId: string, projectId: string, postModel: AssetActionPostModel) => {
+        const res = await this.Post(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/assets/actions`, postModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<boolean>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<boolean> = await res.json();
+        return json;
+
+    };
+}
+const assetApi = new AssetApi();
+export default assetApi;
+```
+## Authenticate
+``` typescript title="/src/api/AuthenticateService.ts"
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CFCToken } from "../model/authenticate/CFCToken";
+import { ChangePasswordPutModel } from "../model/authenticate/ChangePasswordPutModel";
+import { GoogleSignInResponse } from "../model/authenticate/GoogleSignInResponse";
+import { MicrosoftCompleteSignInPostModel } from "../model/authenticate/MicrosoftCompleteSignInPostModel";
+import { TokenRequestModel } from "../model/authenticate/TokenRequestModel";
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { HttpService } from "./HttpService";
+import { ProfileResponseModel } from "../model/profiles/ProfileResponseModel";
+
+class AuthenticateApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicIdApiUrl
+    }
+    NormalLogin = async (loginModel: TokenRequestModel) => {
+        const res = await this.Post(
+            '/api/id/v1/authentications/login/mobile-app', loginModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<CFCToken>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<CFCToken> = await res.json();
+        if (json && json.result) {
+            await AsyncStorage.setItem('token', json.result.accessToken!);
+            await AsyncStorage.setItem('refresh-token', json.result.refreshToken!);
+            await AsyncStorage.setItem('cfc-token', JSON.stringify(json.result));
+        }
+        return json;
+    }
+    MicrosoftLogin = async (stateCode: string, email: string) => {
+        let model = new MicrosoftCompleteSignInPostModel(stateCode, email);
+        console.log(model)
+        const res = await this.Post(`/api/id/v1/authentications/microsoft-signin-fm-mobile-app`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<CFCToken>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<CFCToken> = await res.json();
+        if (json && json.result) {
+            await AsyncStorage.setItem('token', json.result.accessToken!);
+            await AsyncStorage.setItem('refresh-token', json.result.refreshToken!);
+            await AsyncStorage.setItem('cfc-token', JSON.stringify(json.result));
+        }
+        return json;
+    }
+    GetMicrosoftAuthenticateUrl = async () => {
+        return `${this.publicIdApiUrl}/external/microsoft-signin-fm-mobile-app`;
+    };
+    GetNewToken = async () => {
+        let model = new TokenRequestModel();
+        model.refreshToken = (await this.GetRefreshToken())!;
+            const res = await this.Post(
+                `/api/id/v1/authentications/login/mobile-app`, model);
+                console.log(res)
+            if (res.status !== 200) {
+                let result = new ApiResponse<CFCToken>();
+                result.statusCode = res.status;
+                return result;
+            }
+            const json: ApiResponse<CFCToken> = await res.json();
+            if (json && json.result) {
+                await AsyncStorage.setItem('token', json.result.accessToken!);
+                await AsyncStorage.setItem('refresh-token', json.result.refreshToken!);
+                await AsyncStorage.setItem('cfc-token', JSON.stringify(json.result));
+            }
+            return json;
+
+    }
+    ChangePassword = async (model: ChangePasswordPutModel) => {
+        const res = await this.Put(
+            `/api/id/v1/my-accounts/fm-change-password`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<boolean>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<boolean> = await res.json();
+        return json;
+    };
+
+    GoogleLoginIOS = async (model: GoogleSignInResponse) => {
+        const res = await this.Post(`/api/id/v1/authentications/google/fm-ios`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<CFCToken>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<CFCToken> = await res.json();
+        if (json && json.result) {
+            await AsyncStorage.setItem('token', json.result.accessToken!);
+            await AsyncStorage.setItem('refresh-token', json.result.refreshToken!);
+            await AsyncStorage.setItem('cfc-token', JSON.stringify(json.result));
+        }
+        return json;
+    }
+    GoogleLoginAndroid = async (model: GoogleSignInResponse) => {
+        const res = await this.Post(`/api/id/v1/authentications/google/fm-android`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<CFCToken>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<CFCToken> = await res.json();
+        if (json && json.result) {
+            await AsyncStorage.setItem('token', json.result.accessToken!);
+            await AsyncStorage.setItem('refresh-token', json.result.refreshToken!);
+            await AsyncStorage.setItem('cfc-token', JSON.stringify(json.result));
+        }
+        return json;
+    }
+    LinkGoogleIOS = async (model: GoogleSignInResponse) => {
+        const res = await this.Post(`/api/id/v1/my-accounts/links/google-ios`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<ProfileResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ProfileResponseModel> = await res.json();
+        return json;
+    }
+    LinkGoogleAndroid = async (model: GoogleSignInResponse) => {
+        const res = await this.Post(`/api/id/v1/my-accounts/links/google`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<ProfileResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ProfileResponseModel> = await res.json();
+        return json;
+    }
+    Profiles = async () => {
+        const res = await this.Get(
+            '/api/id/v1/my-accounts/profiles'
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<ProfileResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ProfileResponseModel> = await res.json();
+        return json;
+    }
+    Logout = async () => {
+        const res = await this.Post(`/api/id/v1/my-accounts/logout-fm-mobile`);
+        if (res.status !== 200) {
+            let result = new ApiResponse<boolean>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<boolean> = await res.json();
+        return json;
+    }
+}
+const authenticateApi = new AuthenticateApi();
+export default authenticateApi;
+```
+## Clients
+``` typescript title="/src/api/ClientsService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { ClientReponseModel } from "../model/client/ClientReponseModel";
+import { HttpService } from "./HttpService";
+
+class ClientsApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    Gets = async()=>{
+        const res = await this.Get(
+            '/api/fm-mobile/v1/clients'
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<ClientReponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ClientReponseModel[]> = await res.json();
+        return json;
+    }
+}
+const clientsApi = new ClientsApi();
+export default clientsApi;
+```
+## Comment
+``` typescript title="/src/api/CommentService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { FMInvidualReportCommentCreateModel } from "../model/invidual-report/FMInvidualReportCommentCreateModel";
+import { FMInvidualReportCommentResponseModel } from "../model/invidual-report/FMInvidualReportCommentResponseModel";
+import { HttpService } from "./HttpService";
+
+class CommentApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetComments = async( reportId: string)=>{
+        const res = await this.Get(
+            `/api/fm-mobile/v1/invidual-report-comments/get/${reportId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportCommentResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportCommentResponseModel[]> = await res.json();
+        return json;
+    }
+    CreateComment = async (createModel: FMInvidualReportCommentCreateModel) => {
+
+        const res = await this.Post(
+            `/api/fm-mobile/v1/invidual-report-comments/create`, createModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportCommentResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportCommentResponseModel> = await res.json();
+        return json;
+    }
+
+}
+const commentApi = new CommentApi();
+export default commentApi;
+```
+## Department
+``` typescript title="/src/api/DepartmentService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { DepartmentResponseModel } from "../model/department/department-response.model";
+import { HttpService } from "./HttpService";
+
+class DepartmentApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetDepartments = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/departments`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<DepartmentResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<DepartmentResponseModel[]> = await res.json();
+        return json;
+    }
+}
+const departmentApi = new DepartmentApi();
+export default departmentApi;
+```
+## Firebase Token
+``` typescript title="/src/api/FirebaseTokenService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { FirebaseTokenPostModel } from "../model/firebase-token/FirebaseTokenPostModel";
+import { HttpService } from "./HttpService";
+
+class FirebaseTokenApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    Create = async (postModel: FirebaseTokenPostModel) => {
+        const res = await this.Post(
+            `/api/fm-mobile/v1/firebase-token`, postModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<object>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<object> = await res.json();
+        return json;
+    }
+
+    Remove = async () => {
+        const res = await this.Delete(`/api/fm-mobile/v1/firebase-token`);
+        if (res.status !== 200) {
+            let result = new ApiResponse<object>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<object> = await res.json();
+        return json;
+    }
+
+}
+const firebaseTokenApi = new FirebaseTokenApi();
+export default firebaseTokenApi;
+```
+## Image
+``` typescript title="/src/api/ImageService.ts"
+import { AssetImagePostModel } from "../model/asset/AssetImagePostModel";
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Image360ResponseModel } from "../model/image360/Image360Response";
+import { UploadAFileResponseModel } from "../model/upload-file/UploadAFileResponseModel";
+import { UploadFilesResponseModel } from "../model/upload-file/UploadFilesResponseModel";
+import { HttpService } from "./HttpService";
+
+class ImageApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicCMReApiUrl
+    }
+    CreateImageInOpenFolder = async (hostId: String, createModel: UploadAFileResponseModel) => {
+        const res = await this.Post(
+            `/api/cm/v1/mobile-images/invidual-report/${hostId}/create`, createModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Image360ResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Image360ResponseModel> = await res.json();
+        return json;
+    }
+    CreateImageInCloseFolder = async (hostId: String, createModel: UploadAFileResponseModel) => {
+        const res = await this.Post(
+            `/api/cm/v1/mobile-images/invidual-report/${hostId}/close`, createModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Image360ResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Image360ResponseModel> = await res.json();
+        return json;
+    }
+    CreateAssetImage = async (postModel: AssetImagePostModel) => {
+        const res = await this.Post(
+            `/api/cm/v1/mobile-images/fm/assets`, postModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Image360ResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Image360ResponseModel[]> = await res.json();
+        return json;
+
+    }
+    CreateProductImage = async (postModel: AssetImagePostModel) => {
+        const res = await this.Post(
+            `/api/cm/v1/mobile-images/fm/products`, postModel
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Image360ResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Image360ResponseModel[]> = await res.json();
+        return json;
+
+    }
+
+}
+const imageApi = new ImageApi();
+export default imageApi;
+```
+## Notification
+``` typescript title="/src/api/NotificationService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { NotificationResponseModel } from "../model/notification/NotificationResponseModel";
+import { HttpService } from "./HttpService";
+
+class NotificationApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicCMReApiUrl
+    }
+    Read = async (notificationId: string) => {
+        const res = await this.Put(
+            `/api/cm/v1/notifications/fm/read/${notificationId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<boolean>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<boolean> = await res.json();
+        return json;
+
+    };
+    Gets = async (pageIndex: Number) => {
+        const res = await this.Get(
+            `/api/cm/v1/notifications/fm/page/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<NotificationResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<NotificationResponseModel[]> = await res.json();
+        return json;
+
+    };
+    GetCount = async () => {
+        const res = await this.Get(
+            `/api/cm/v1/notifications/fm/unread-count`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<number>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<number> = await res.json();
+        return json;
+
+    };
+}
+const notificationApi = new NotificationApi();
+export default notificationApi;
+```
+## Partner
+``` typescript title="/src/api/PartnerService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { PartnerResponseModel } from "../model/partner/PartnerResponseModel";
+import { HttpService } from "./HttpService";
+
+class PartnerApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    // SearchPartner = async (clientId: string, projectId: string, keyword: string) => {
+    //     const res = await this.Get(
+    //         `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/partners/search/${keyword}`
+    //     );
+    //     if (res.status !== 200) {
+    //         let result = new ApiResponse<PartnerResponseModel[]>();
+    //         result.statusCode = res.status;
+    //         return result;
+    //     }
+    //     const json: ApiResponse<PartnerResponseModel[]> = await res.json();
+    //     return json;
+    // }
+
+    GetPartner = async (clientId: string, projectId: string, pageIndex: number, keyword:string = '') => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/partners/?page=${pageIndex}&text=${keyword}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<PartnerResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<PartnerResponseModel>> = await res.json();
+        return json;
+    }
+}
+const partnerApi = new PartnerApi();
+export default partnerApi;
+```
+## Permissions
+``` typescript title="/src/api/PermissionsService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { HttpService } from "./HttpService";
+
+class PermissionsApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    Gets = async(clientId:string,projectId:string)=>{
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/permissions/p-${projectId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<number[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<number[]> = await res.json();
+        return json;
+    }
+}
+const permissionsApi = new PermissionsApi();
+export default permissionsApi;
+```
+## Product
+``` typescript title="/src/api/ProductService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { ProductResponseModel } from "../model/product/ProductResponseModel";
+import { HttpService } from "./HttpService";
+
+class ProductApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetProduct = async (clientId: string, projectId: string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/products/page/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<ProductResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<ProductResponseModel>> = await res.json();
+        return json;
+    }
+    SearchProduct = async (projectId: string,text:string, pageIndex: number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/p-${projectId}/search/product/${text}/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<ProductResponseModel>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<ProductResponseModel>> = await res.json();
+        return json;
+    }
+
+}
+const productApi = new ProductApi();
+export default productApi;
+```
+## Projects
+``` typescript title="/src/api/ProjectsService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { ProjectResponseModel } from "../model/project/ProjectResponseModel";
+import { HttpService } from "./HttpService";
+
+class ProjectsApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    Gets = async(clientId:string,index:number)=>{
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/projects`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<ProjectResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ProjectResponseModel[]> = await res.json();
+        return json;
+    }
+    GetProjectById = async(clientId:string,projectId:string)=>{
+        const res = await this.Get(
+            `/api/fm/v1/c-${clientId}/projects/project/${projectId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<ProjectResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ProjectResponseModel> = await res.json();
+        return json;
+    }
+}
+const projectsApi = new ProjectsApi();
+export default projectsApi;
+```
+## Report
+``` typescript title="/src/api/ReportService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { ClientReponseModel } from "../model/client/ClientReponseModel";
+import { InvidualReportActionResponseModel } from "../model/invidual-report-2/invidual-report-action.model";
+import { InvidualReportActionPostModel } from "../model/invidual-report-2/invidual-report-action.post.model";
+import { InvidualReport_v2_PostModel } from "../model/invidual-report-2/invidual-report-v2.post.model";
+import { InvidualReport2PutModel } from "../model/invidual-report-2/invidual-report_v2-put.model";
+import { InvidualReportStatus } from "../model/invidual-report-2/invidual_report_status.enum";
+import { InvidualReportResponseModel2 } from "../model/invidual-report-2/invidual_report_v2.model";
+import { FMInvidualReportClassifyModel } from "../model/invidual-report/FMInvidualReportClassifyModel";
+import { FMInvidualReportCloseModel } from "../model/invidual-report/FMInvidualReportCloseModel";
+import { FMInvidualReportCreateModel } from "../model/invidual-report/FMInvidualReportCreateModel";
+import { FMInvidualReportRelocateModel } from "../model/invidual-report/FMInvidualReportRelocateModel";
+import { FMInvidualReportResponseModel } from "../model/invidual-report/FMInvidualReportResponseModel";
+import { FMInvidualReportUpdateImagesModel } from "../model/invidual-report/FMInvidualReportUpdateImagesModel";
+import { InvidualReportPutModel } from "../model/invidual-report/InvidualReportPutModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { HttpService } from "./HttpService";
+
+class ReportApi2 extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    //#region Gets
+
+    GetUnsolvedReports = async (clientId: string,
+        projectId: string,
+        index: Number = 0) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/?page=${index}&status=${InvidualReportStatus.UNSOLVED}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<InvidualReportResponseModel2>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<InvidualReportResponseModel2>> = await res.json();
+        return json;
+    }
+    GetSolvedReports = async (clientId: string,
+        projectId: string,
+        index: Number = 0) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/?page=${index}&status=${InvidualReportStatus.SOLVED}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<InvidualReportResponseModel2>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<InvidualReportResponseModel2>> = await res.json();
+        return json;
+    }
+    GetSingle = async (clientId: string,
+        projectId: string,
+        reportId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/single-${reportId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+    //#endregion
+
+    //#region Actions
+    CreateReport = async (clientId: string,
+        projectId: string, postModel: InvidualReport_v2_PostModel) => {
+        console.log(clientId, projectId, postModel)
+        const res = await this.Post(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports`, postModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+    ReportAction = async (clientId: string,
+        projectId: string,
+        model: InvidualReportActionPostModel) => {
+
+        const res = await this.Post(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/actions`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportActionResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportActionResponseModel[]> = await res.json();
+        return json;
+    }
+
+    //#endregion
+
+    UpdateImageReport = async (updateModel: FMInvidualReportUpdateImagesModel) => {
+
+        const res = await this.Put(
+            `/api/fm-mobile/v1/invidual-reports/update/image`, updateModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportResponseModel> = await res.json();
+        return json;
+    }
+    GetReportByAssetId = async (assetId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/invidual-reports/get-by-asset/${assetId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportResponseModel[]> = await res.json();
+        return json;
+    }
+    PutReport = async (clientId: string, projectId: string, putModel: InvidualReport2PutModel) => {
+
+        const res = await this.Put(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports`, putModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+}
+const reportApi2 = new ReportApi2();
+export default reportApi2;
+```
+## Report Type
+``` typescript title="/src/api/ReportTypeService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { FMInvidualReportTypeResponseModel } from "../model/invidual-report-type/FMInvidualReportTypeResponseModel";
+import { HttpService } from "./HttpService";
+
+class ReportTypeApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetReportTypes = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/invidual-report-types`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportTypeResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportTypeResponseModel[]> = await res.json();
+        return json;
+    }
+
+
+}
+const reportTypeApi = new ReportTypeApi();
+export default reportTypeApi;
+```
+## Search
+``` typescript title="/src/api/SearchService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { SearchResultResponseModel } from "../model/search/SearchResultResponseModel";
+import { HttpService } from "./HttpService";
+
+class SearchApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    Search = async (projectId: string,text:string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/p-${projectId}/search/${text}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<SearchResultResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<SearchResultResponseModel> = await res.json();
+        return json;
+    }
+
+
+}
+const searchApi = new SearchApi();
+export default searchApi;
+```
+## Space
+``` typescript title="/src/api/SpaceService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { FMInvidualReportTypeResponseModel } from "../model/invidual-report-type/FMInvidualReportTypeResponseModel";
+import { SpaceResponseModel } from "../model/space/SpaceResponseModel";
+import { HttpService } from "./HttpService";
+
+class SpaceApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetSpaces = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/spaces/all`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<SpaceResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<SpaceResponseModel[]> = await res.json();
+        return json;
+    }
+
+
+}
+const spaceApi = new SpaceApi();
+export default spaceApi;
+```
+## Stats
+``` typescript title="/src/api/StatsService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { InvidualReportStatIndicesSerializedModel } from "../model/stats/InvidualReportStatIndicesSerializedModel";
+import { InvidualReportStatPICItemSerializedModel } from "../model/stats/InvidualReportStatPICItemSerializedModel";
+import { InvidualReportStatPICSerializedModel } from "../model/stats/InvidualReportStatPICSerializedModel";
+import { InvidualReportStatSerializedModel } from "../model/stats/InvidualReportStatSerializedModel";
+import { HttpService } from "./HttpService";
+
+class StatsApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetStats = async (clientId: string, projectId: string, from: number = -1, to: number = -1) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/stats/by-months/?from=${from}&to=${to}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportStatSerializedModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportStatSerializedModel[]> = await res.json();
+        return json;
+    }
+    GetStatsByCategory = async (clientId: string, projectId: string, from: number = -1, to: number = -1) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/stats/categories/by-months/?from=${from}&to=${to}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportStatSerializedModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportStatSerializedModel[]> = await res.json();
+        return json;
+    }
+    GetStatsByIndices = async (clientId: string, projectId: string, from: number = -1, to: number = -1) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/stats/indices/?from=${from}&to=${to}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportStatIndicesSerializedModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportStatIndicesSerializedModel> = await res.json();
+        return json;
+    }
+    GetStatsByPICs = async (clientId: string, projectId: string, from: number = -1, to: number = -1) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/stats/pics/?from=${from}&to=${to}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportStatPICSerializedModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportStatPICSerializedModel> = await res.json();
+        return json;
+    }
+
+}
+const statsApi = new StatsApi();
+export default statsApi;
+```
+## Task
+``` typescript title="/src/api/TaskService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { MaintenancePlanExecutionResponseModel } from "../model/maintenance-plan-execution/MaintenancePlanExecutionResponseModel";
+import { MaintenancePlans } from "../model/maintenance-plan/MaintenancePlans";
+import { MaintenancePlansResponseModel } from "../model/maintenance-plan/MaintenancePlansResponseModel";
+import { HttpService } from "./HttpService";
+
+class TaskApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    GetTask = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/manual-maintenance-plans`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<MaintenancePlansResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<MaintenancePlansResponseModel> = await res.json();
+        return json;
+    }
+    GetExecutions = async (clientId:string,projectId:string,maintenancePlanId:string,pageIndex:number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/maintenance-plan-executions/${maintenancePlanId}/page/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<MaintenancePlanExecutionResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<MaintenancePlanExecutionResponseModel[]> = await res.json();
+        return json;
+    }
+}
+const taskApi = new TaskApi();
+export default taskApi;
+```
+## Upload
+``` typescript title="/src/api/UploadService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { UploadFilesResponseModel } from "../model/upload-file/UploadFilesResponseModel";
+import { HttpService } from "./HttpService";
+
+class UploadFilesApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicCMReApiUrl
+    }
+    UploadFiles = async (form: FormData) => {
+        const res = await this.Post(
+            '/api/cm/v1/uploads/files', {}, form
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<UploadFilesResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<UploadFilesResponseModel> = await res.json();
+        return json;
+    }
+}
+const uploadFilesApi = new UploadFilesApi();
+export default uploadFilesApi;
+```
+## User
+``` typescript title="/src/api/UserService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { ClientAccountAssignment } from "../model/user/ClientAccountAssignment";
+import { HttpService } from "./HttpService";
+
+class UserApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    //#region Gets
+
+    Search = async (clientId: string,
+        keyword: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/users/search/${keyword}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<ClientAccountAssignment[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<ClientAccountAssignment[]> = await res.json();
+        return json;
+    }
+    //#endregion
+
+
+}
+const userApi = new UserApi();
+export default userApi;
+```

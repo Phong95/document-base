@@ -1,0 +1,815 @@
+---
+sidebar_position: 2
+---
+# Báo lỗi
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+<Tabs>
+<TabItem value="service" label="API Service">
+
+``` typescript title="/src/api/ReportService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { ClientReponseModel } from "../model/client/ClientReponseModel";
+import { InvidualReportActionResponseModel } from "../model/invidual-report-2/invidual-report-action.model";
+import { InvidualReportActionPostModel } from "../model/invidual-report-2/invidual-report-action.post.model";
+import { InvidualReport_v2_PostModel } from "../model/invidual-report-2/invidual-report-v2.post.model";
+import { InvidualReport2PutModel } from "../model/invidual-report-2/invidual-report_v2-put.model";
+import { InvidualReportStatus } from "../model/invidual-report-2/invidual_report_status.enum";
+import { InvidualReportResponseModel2 } from "../model/invidual-report-2/invidual_report_v2.model";
+import { FMInvidualReportClassifyModel } from "../model/invidual-report/FMInvidualReportClassifyModel";
+import { FMInvidualReportCloseModel } from "../model/invidual-report/FMInvidualReportCloseModel";
+import { FMInvidualReportCreateModel } from "../model/invidual-report/FMInvidualReportCreateModel";
+import { FMInvidualReportRelocateModel } from "../model/invidual-report/FMInvidualReportRelocateModel";
+import { FMInvidualReportResponseModel } from "../model/invidual-report/FMInvidualReportResponseModel";
+import { FMInvidualReportUpdateImagesModel } from "../model/invidual-report/FMInvidualReportUpdateImagesModel";
+import { InvidualReportPutModel } from "../model/invidual-report/InvidualReportPutModel";
+import { Pagination } from "../model/pagination/Pagination";
+import { HttpService } from "./HttpService";
+
+class ReportApi2 extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    //#region Gets
+
+    GetUnsolvedReports = async (clientId: string,
+        projectId: string,
+        index: Number = 0) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/?page=${index}&status=${InvidualReportStatus.UNSOLVED}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<InvidualReportResponseModel2>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<InvidualReportResponseModel2>> = await res.json();
+        return json;
+    }
+    GetSolvedReports = async (clientId: string,
+        projectId: string,
+        index: Number = 0) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/?page=${index}&status=${InvidualReportStatus.SOLVED}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<Pagination<InvidualReportResponseModel2>>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<Pagination<InvidualReportResponseModel2>> = await res.json();
+        return json;
+    }
+    GetSingle = async (clientId: string,
+        projectId: string,
+        reportId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/single-${reportId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+    //#endregion
+
+    //#region Actions
+    CreateReport = async (clientId: string,
+        projectId: string, postModel: InvidualReport_v2_PostModel) => {
+        console.log(clientId, projectId, postModel)
+        const res = await this.Post(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports`, postModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+    ReportAction = async (clientId: string,
+        projectId: string,
+        model: InvidualReportActionPostModel) => {
+
+        const res = await this.Post(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports/actions`, model);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportActionResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportActionResponseModel[]> = await res.json();
+        return json;
+    }
+
+    //#endregion
+
+    UpdateImageReport = async (updateModel: FMInvidualReportUpdateImagesModel) => {
+
+        const res = await this.Put(
+            `/api/fm-mobile/v1/invidual-reports/update/image`, updateModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportResponseModel> = await res.json();
+        return json;
+    }
+    GetReportByAssetId = async (assetId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/invidual-reports/get-by-asset/${assetId}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<FMInvidualReportResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<FMInvidualReportResponseModel[]> = await res.json();
+        return json;
+    }
+    PutReport = async (clientId: string, projectId: string, putModel: InvidualReport2PutModel) => {
+
+        const res = await this.Put(
+            `/api/fm-mobile/v2/c-${clientId}/p-${projectId}/invidual-reports`, putModel);
+        if (res.status !== 200) {
+            let result = new ApiResponse<InvidualReportResponseModel2>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<InvidualReportResponseModel2> = await res.json();
+        return json;
+    }
+}
+const reportApi2 = new ReportApi2();
+export default reportApi2;
+```
+
+</TabItem>
+
+<TabItem value="typescript" label="Component">
+
+``` typescript title="/src/components/report/CreateReport.tsx"
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Image,
+  Dimensions,
+  Platform,
+} from 'react-native';
+import React, { PropsWithChildren, useContext, useEffect, useState } from 'react';
+import { GlobalStyles } from '../../styles/GlobalStyles';
+import { Button, Dialog, TouchableRipple } from 'react-native-paper';
+import { NavigationContainerRef } from '../../navigation/GlobalNavigationContainer';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GlobalComponentsState } from '../../model/context/GlobalComponentsStateModel';
+import AppContext from '../../context/AppContext';
+import { useTranslation } from 'react-i18next';
+import CustomButton from '../global/CustomButton';
+import { ReportReduxModel } from '../../model/redux/ReportReduxModel';
+import { useDispatch, useSelector } from 'react-redux';
+import { FMInvidualReportType } from '../../model/invidual-report-type/FMInvidualReportType';
+import CustomComboboxInput from '../global/CustomComboboxInput';
+import CustomChip from '../global/CustomChip';
+import CustomInput from '../global/CustomInput';
+import { ImageReduxModel } from '../../model/redux/ImageReduxModel';
+import { SetImages } from '../../redux/actions/ImageAction';
+import { FMInvidualReportCreateModel } from '../../model/invidual-report/FMInvidualReportCreateModel';
+import { AuthenticateReduxModel } from '../../model/redux/AuthenticateReduxModel';
+import reportApi from '../../api/ReportService';
+import imageUtil from '../../helper/ImageUtils';
+import uploadFilesApi from '../../api/UploadService';
+import { ApiResponse } from '../../model/base/ApiResponseModel';
+import { Image360ResponseModel } from '../../model/image360/Image360Response';
+import imageApi from '../../api/ImageService';
+import { FMInvidualReport } from '../../model/invidual-report/FMInvidualReport';
+import { SetNewReportData } from '../../redux/actions/ReportAction';
+import { Image360 } from '../../model/image360/Image360';
+import { Space } from '../../model/space/Space';
+import { Asset } from '../../model/asset/Asset';
+import { AssetReduxModel } from '../../model/redux/AssetReduxModel';
+import { GlobalTheme } from '../../styles/GlobalThemes';
+import SpacePicker from '../space/SpacePicker';
+import AssetPage from '../asset/AssetPage';
+import QrcodePage from '../qrcode/QrcodePage';
+import { SpaceReduxModel } from '../../model/redux/SpaceReduxModel';
+import { InvidualReport_v2_PostModel } from '../../model/invidual-report-2/invidual-report-v2.post.model';
+import reportApi2 from '../../api/ReportService2';
+import { InvidualReport2 } from '../../model/invidual-report-2/invidual_report_v2.model';
+import { ReportReduxModel2 } from '../../model/redux/ReportReduxModel2';
+import { SetNewReportData2 } from '../../redux/actions/ReportAction2';
+import { DepartmentModel } from '../../model/department/department.model';
+import DepartmentPicker from '../department/DepartmentPicker';
+import { DepartmentReduxModel } from '../../model/redux/DepartmentReduxModel';
+import { SnackbarType } from '../../model/snackbar/SnackbarType';
+const { width } = Dimensions.get('window');
+const windowHeight = Dimensions.get('window').height;
+
+const IMAGE_WIDTH = width;
+type CreateReportProps = PropsWithChildren<{
+  asset?: Asset;
+  navigation?: any;
+  route?: any;
+}>;
+export default function CreateReport2(props: CreateReportProps) {
+  const authenticateReduxData: AuthenticateReduxModel = useSelector(
+    (state: any) => state.AuthenticateReducer,
+  );
+  const assetReduxModelData: AssetReduxModel = useSelector(
+    (state: any) => state.AssetReducer,
+  );
+  const globalContext: GlobalComponentsState = useContext(AppContext);
+  const reportReduxModelData: ReportReduxModel2 = useSelector(
+    (state: any) => state.ReportReducer2,
+  );
+  const imageReduxData: ImageReduxModel = useSelector(
+    (state: any) => state.ImageReducer,
+  );
+  const spaceReduxData: SpaceReduxModel = useSelector(
+    (state: any) => state.SpaceReducer,
+  );
+  const departmentReduxData: DepartmentReduxModel = useSelector(
+    (state: any) => state.DepartmentReducer,
+  );
+  const dispatch = useDispatch<any>();
+
+  const [first, setFirst] = useState(true);
+  //#region Asset
+  const [selectedAssets, setSelectedAssets] = useState<Asset[]>([]);
+
+  //#endregion
+
+  //#region Department
+  const [selectedDepartments, setSelectedDepartments] = useState<DepartmentModel[]>([]);
+
+  //#endregion
+  useEffect(() => {
+    if (first) {
+      dispatch(SetImages([]));
+    }
+    if (
+      props.route &&
+      props.route.params.assetId &&
+      selectedAssets.length == 0
+    ) {
+      let asset = assetReduxModelData.assets.items.find(
+        x => x.id == props.route.params.assetId,
+      );
+      if (asset) setSelectedAssets([asset]);
+    }
+  }, [first, selectedAssets]);
+  //#region Language
+  const { t } = useTranslation();
+  let FromTitle = t('Create.From');
+  let ToTitle = t('CreateReport.Location');
+  let RelatedAssetsTitle = t('Create.RelatedAssets');
+  let UploadImageTitle = t('Create.UploadImages');
+  let SubmitTitle = t('Button.Submit');
+  let ClientTitle = t('Snackbar.InvalidClient');
+  let CreateBillTitle = t('Snackbar.CreateReport');
+  let SelectImagesTitle = t('Snackbar.SelectImages');
+  //#endregion
+
+  const [title, setTitle] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+
+  //#region Select Space Modal
+  const [selectedSpace, setSelectedSpace] = useState<Space>();
+  const [tempSpace, setTempSpace] = useState<string>();
+  const [spaceModal, setSpaceModal] = useState<boolean>(false);
+
+  //#endregion
+
+  //#region Asset Modal
+  const [assetModal, setAssetModal] = useState<boolean>(false);
+
+  //#endregion
+
+  //#region Department Modal
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentModel>();
+  const [tempDepartment, setTempDepartment] = useState<string>();
+  const [departmentModal, setDepartmentModal] = useState<boolean>(false);
+
+  //#endregion
+
+  //#region QrCode Modal
+  const [qrCodeModal, setQrCodeModal] = useState<boolean>(false);
+
+  //#endregion
+
+  const Post = async () => {
+    globalContext.setShowSpinner(true);
+    if (
+      !authenticateReduxData.selectedProject ||
+      !authenticateReduxData.selectedClient
+    ) {
+      globalContext.openSnackbar(ClientTitle);
+      globalContext.setShowSpinner(false);
+
+      return;
+    }
+    if (title.length == 0) {
+      globalContext.openSnackbar(t("CreateReport.InvalidTitle"), SnackbarType.WARNING);
+      globalContext.setShowSpinner(false);
+
+      return;
+    }
+    if (imageReduxData.selectedImages?.length > 0) {
+
+      let createModel2 = new InvidualReport_v2_PostModel();
+      createModel2.description = description;
+      createModel2.spaceId = selectedSpace ? selectedSpace.id! : '';
+      createModel2.departmentId = selectedDepartment ? selectedDepartment.id! : '';
+      createModel2.title = title;
+      createModel2.assetIds = selectedAssets.map(x => x.id);
+
+      let res = await reportApi2.CreateReport(authenticateReduxData.selectedClient.id, authenticateReduxData.selectedProject.id, createModel2);
+      if (res.successful) {
+        if (res.result) {
+          const data = new FormData();
+
+          for (
+            let index = 0;
+            index < imageReduxData.selectedImages.length;
+            index++
+          ) {
+            const image = imageReduxData.selectedImages[index];
+            let resizedImage = await imageUtil.ResizeImage(image,()=>{globalContext.openSnackbar("Resize image failed!",SnackbarType.ERROR)});
+            data.append(`file${index}`, {
+              uri: resizedImage?.uri,
+              name: resizedImage?.name,
+              type: resizedImage?.type,
+            });
+          }
+          let uploadRes = await uploadFilesApi.UploadFiles(data);
+          if (uploadRes.successful) {
+            if (uploadRes.result) {
+              let resImage: ApiResponse<Image360ResponseModel> =
+                await imageApi.CreateImageInOpenFolder(
+                  res.result.id,
+                  uploadRes.result.fileNames[0],
+                );
+
+              if (resImage.successful) {
+                if (resImage.result) {
+                  if (!res.result.beforeImages) res.result.beforeImages = [];
+                  res.result.beforeImages.push(resImage.result);
+                  let report = new InvidualReport2(res.result);
+
+                  reportReduxModelData.newReport.items.unshift(report);
+                  dispatch(
+                    SetNewReportData2(
+                      reportReduxModelData.newReport.total + 1,
+                      reportReduxModelData.newReport.items,
+                    ),
+                  );
+
+                  NavigationContainerRef.navigate('Home');
+                  globalContext.openSnackbar(CreateBillTitle, SnackbarType.SUCCESS);
+                } else {
+                  globalContext.openSnackbar(resImage.errorMessage, SnackbarType.ERROR);
+                }
+              } else {
+                globalContext.openSnackbar(
+                  `Post image error: ${resImage.statusCode.toString()}`, SnackbarType.ERROR
+                );
+              }
+            } else {
+              globalContext.openSnackbar(`Upload image error: ${uploadRes.errorMessage}`, SnackbarType.ERROR);
+            }
+          } else {
+            globalContext.openSnackbar(
+              `Upload image error: ${uploadRes.statusCode.toString()}`,
+            );
+          }
+        } else {
+          globalContext.openSnackbar(`Create report: ${res.errorMessage}`, SnackbarType.ERROR);
+        }
+      } else {
+        globalContext.openSnackbar(`Create report: ${res.statusCode.toString()}`, SnackbarType.ERROR);
+      }
+      globalContext.setShowSpinner(false);
+    } else {
+      globalContext.openSnackbar(SelectImagesTitle, SnackbarType.WARNING);
+      globalContext.setShowSpinner(false);
+
+      return;
+    }
+  };
+  return (
+    <View
+      style={[
+        GlobalStyles.body,
+        GlobalStyles.displayFlex,
+        GlobalStyles.flexDirectionColumn,
+        GlobalStyles.backGroundColorWhite,
+      ]}>
+      <View
+        style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter]}>
+        <TouchableRipple
+          borderless={Platform.OS === 'android' ? true : false}
+          onPress={() => {
+            NavigationContainerRef.goBack();
+          }}
+          style={{ padding: 10, borderRadius: 20 }}>
+          <Icon name="arrow-left" color="black" size={24} />
+        </TouchableRipple>
+        <Text style={{ fontSize: 20, fontWeight: '600' }}>
+          {t('CreateReport.Header')}
+        </Text>
+      </View>
+      <ScrollView style={[{ padding: 5 }]}>
+        <CustomInput
+          onChangeText={text => {
+            setTitle(text);
+          }}
+          affixText="*"
+          affixTextColor="red"
+          style={{
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.2)',
+          }}
+          placeHolderColor="#303030"
+          placeholder={t('CreateReport.Title')}></CustomInput>
+        <CustomInput
+          onChangeText={text => {
+            setDescription(text);
+          }}
+          style={{
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.2)',
+            marginTop: 10,
+          }}
+          placeHolderColor="#303030"
+          placeholder={t('CreateReport.Description')}></CustomInput>
+        <View
+          style={[
+            GlobalStyles.flexDirectionRow,
+            GlobalStyles.justifyContentSpaceBetween,
+            GlobalStyles.alignItemsCenter,
+          ]}>
+          <View
+            style={[
+              GlobalStyles.displayFlex,
+              GlobalStyles.flexDirectionRow,
+              GlobalStyles.alignItemsCenter,
+              { paddingTop: 10, paddingBottom: 10, paddingLeft: 5 },
+            ]}>
+            <Text style={[{ fontSize: 16, color: 'rgba(0,0,0,0.7)' }]}>
+              {ToTitle}:
+            </Text>
+            {selectedSpace && (
+              <CustomChip
+                onClose={() => {
+                  setSelectedSpace(undefined);
+                }}
+                closeButton={true}
+                content={selectedSpace?.name ? selectedSpace?.name : ''}
+                color={'secondary'}
+                style={GlobalStyles.shadow}></CustomChip>
+            )}
+          </View>
+          <TouchableRipple
+            borderless={Platform.OS === 'android' ? true : false}
+            onPress={() => {
+              setSpaceModal(true);
+            }}
+            style={{ padding: 10, borderRadius: 20 }}>
+            <Icon
+              name="map-marker"
+              color={GlobalTheme.colors.primary}
+              size={24}
+            />
+          </TouchableRipple>
+        </View>
+
+        <View
+          style={[
+            GlobalStyles.flexDirectionRow,
+            GlobalStyles.justifyContentSpaceBetween,
+            GlobalStyles.alignItemsCenter,
+          ]}>
+          <View
+            style={[
+              GlobalStyles.displayFlex,
+              GlobalStyles.flexDirectionRow,
+              GlobalStyles.alignItemsCenter,
+              { paddingTop: 10, paddingBottom: 10, paddingLeft: 5 },
+            ]}>
+            <Text style={[{ fontSize: 16, color: 'rgba(0,0,0,0.7)' }]}>
+              {t("Create.Department")}
+            </Text>
+            {selectedDepartment && (
+              <CustomChip
+                onClose={() => {
+                  setSelectedDepartment(undefined);
+                }}
+                closeButton={true}
+                content={selectedDepartment?.name ? selectedDepartment?.name : ''}
+                color={'secondary'}
+                style={GlobalStyles.shadow}></CustomChip>
+            )}
+          </View>
+
+          <View
+            style={[
+              GlobalStyles.displayFlex,
+              GlobalStyles.flexDirectionRow,
+              GlobalStyles.alignItemsCenter,
+              { paddingTop: 10, paddingLeft: 5 },
+            ]}>
+            <TouchableRipple
+              borderless={Platform.OS === 'android' ? true : false}
+              onPress={() => {
+                setDepartmentModal(true);
+              }}
+              style={{ padding: 10, borderRadius: 20 }}>
+              <Icon name="plus" color={GlobalTheme.colors.primary} size={24} />
+            </TouchableRipple>
+          </View>
+        </View>
+
+        <View
+          style={[
+            GlobalStyles.flexDirectionRow,
+            GlobalStyles.justifyContentSpaceBetween,
+            GlobalStyles.alignItemsCenter,
+          ]}>
+          <Text
+            style={[{ fontSize: 16, color: 'rgba(0,0,0,0.7)', paddingLeft: 5 }]}>
+            {RelatedAssetsTitle}
+          </Text>
+          <View
+            style={[
+              GlobalStyles.displayFlex,
+              GlobalStyles.flexDirectionRow,
+              GlobalStyles.alignItemsCenter,
+              { paddingTop: 10, paddingLeft: 5 },
+            ]}>
+            <TouchableRipple
+              borderless={Platform.OS === 'android' ? true : false}
+              onPress={() => {
+                setAssetModal(true);
+              }}
+              style={{ padding: 10, borderRadius: 20 }}>
+              <Icon name="plus" color={GlobalTheme.colors.primary} size={24} />
+            </TouchableRipple>
+            <TouchableRipple
+              borderless={Platform.OS === 'android' ? true : false}
+              onPress={() => {
+                setQrCodeModal(true);
+              }}
+              style={{ padding: 10, borderRadius: 20 }}>
+              <Icon
+                name="qrcode"
+                color={GlobalTheme.colors.primary}
+                size={24}
+              />
+            </TouchableRipple>
+          </View>
+        </View>
+
+        {selectedAssets && selectedAssets.length > 0 && (
+          <View style={[GlobalStyles.flexDirectionColumn]}>
+            {selectedAssets.map((x: Asset, index: number) => {
+              return (
+                <CustomChip
+                  closeButton={true}
+                  onClose={() => {
+                    setSelectedAssets(selectedAssets.filter(y => y.id != x.id));
+                  }}
+                  style={{ marginBottom: 5 }}
+                  content={x.name}
+                  key={index}
+                  color={'secondary'}></CustomChip>
+              );
+            })}
+          </View>
+        )}
+
+        <View
+          style={[
+            GlobalStyles.displayFlex,
+            GlobalStyles.flexDirectionRow,
+            { flexWrap: 'wrap' },
+          ]}>
+          {imageReduxData.selectedImages?.length > 0 &&
+            imageReduxData.selectedImages.map((x: any, index: number) => {
+              let ratio = x.width / x.height;
+              let height = IMAGE_WIDTH / ratio;
+              return (
+                <View key={index}>
+                  <Image
+                    style={{
+                      width: IMAGE_WIDTH - 15,
+                      height: height,
+                      margin: 2.5,
+                    }}
+                    source={{
+                      uri: x.path,
+                    }}></Image>
+                  <Pressable
+                    onPress={() => {
+                      globalContext.removeImage(index);
+                    }}
+                    style={[
+                      { position: 'absolute', right: 5, top: 5 },
+                      GlobalStyles.shadow,
+                    ]}>
+                    <Icon name="close" color="white" size={24}></Icon>
+                  </Pressable>
+                </View>
+              );
+            })}
+        </View>
+
+        <Pressable
+          onPress={() => {
+            globalContext.selectImage(1);
+          }}
+          style={{
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.6)',
+            borderStyle: 'dashed',
+            height: 200,
+            width: '100%',
+            marginTop: 10,
+            borderRadius: 20,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexDirection: 'column',
+          }}>
+
+          <Image
+            style={{ height: 150, width: 150 }}
+            source={require('../../../assets/img/empty-image.png')}></Image>
+
+          <Text style={[{ fontSize: 16, color: 'rgba(0,0,0,0.7)' }]}>
+            {UploadImageTitle}
+          </Text>
+        </Pressable>
+        <View
+          style={[
+            GlobalStyles.displayFlex,
+            GlobalStyles.flexDirectionRow,
+            GlobalStyles.alignItemsCenter,
+            GlobalStyles.justifyContentCenter,
+            { paddingTop: 10, paddingBottom: 10 },
+          ]}>
+          <CustomButton
+            title={SubmitTitle}
+            onPress={() => {
+              Post();
+            }}
+            style={{ ...GlobalStyles.shadow }}></CustomButton>
+        </View>
+      </ScrollView>
+      <Dialog visible={spaceModal} onDismiss={() => setSpaceModal(false)}>
+        <Dialog.Title style={{ fontSize: 20 }}>{t("Space.Header")}</Dialog.Title>
+        <Dialog.Content style={{ maxHeight: windowHeight - 300 }}>
+          <ScrollView>
+            <SpacePicker
+              onSelect={(id: string) => {
+                setTempSpace(id);
+              }}></SpacePicker>
+          </ScrollView>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            onPress={() => {
+              setSpaceModal(false);
+            }}>
+            {t('Button.Cancel')}
+          </Button>
+
+          <Button
+            mode='contained'
+            onPress={() => {
+              if (tempSpace) {
+                let space = spaceReduxData.spaces.find(
+                  x => x.id == tempSpace,
+                );
+                if (space) {
+                  setSelectedSpace(space);
+                }
+              }
+              setSpaceModal(false);
+            }}>
+            {t('Button.Select')}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog visible={departmentModal} onDismiss={() => setDepartmentModal(false)}>
+        <Dialog.Title style={{ fontSize: 20 }}>{t("Department.Header")}</Dialog.Title>
+
+        <Dialog.Content style={{ maxHeight: windowHeight - 200 }}>
+          <ScrollView>
+            <DepartmentPicker
+              onSelect={(id: string) => {
+                setTempDepartment(id);
+              }}></DepartmentPicker>
+          </ScrollView>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            onPress={() => {
+              setDepartmentModal(false);
+            }}>
+            {t('Button.Cancel')}
+          </Button>
+
+          <Button
+            mode='contained'
+            onPress={() => {
+              if (tempDepartment) {
+                let department = departmentReduxData.departments.find(
+                  x => x.id == tempDepartment,
+                );
+                if (department) {
+                  setSelectedDepartment(department);
+                }
+              }
+              setDepartmentModal(false);
+            }}>
+            {t('Button.Select')}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog visible={assetModal} onDismiss={() => setAssetModal(false)}>
+        <Dialog.Title style={{ fontSize: 20 }}>{t("Asset.Asset")}</Dialog.Title>
+
+        <Dialog.Content style={{ maxHeight: windowHeight - 300 }}>
+          <ScrollView>
+            <AssetPage useForSelect={true} showHeader={false}></AssetPage>
+          </ScrollView>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            onPress={() => {
+              setAssetModal(false);
+            }}>
+            {t('Button.Cancel')}
+          </Button>
+
+          <Button
+            mode='contained'
+            onPress={() => {
+              let tempList = selectedAssets?.concat(
+                assetReduxModelData.assets.items.filter(x => x.isSelected),
+              );
+              tempList = tempList.concat(assetReduxModelData.searchAssets.items.filter(x => x.isSelected),
+              )
+              let list = tempList.filter((item, pos, self) => self.findIndex(v => v.id === item.id) === pos);
+              // let uniqueItems = [...new Set(tempList)]
+              setSelectedAssets(list);
+              setAssetModal(false);
+            }}>
+            {t('Button.Select')}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+      <Dialog visible={qrCodeModal} onDismiss={() => setQrCodeModal(false)}>
+        <Dialog.Content style={{ maxHeight: windowHeight - 200, minHeight: 400 }}>
+          <QrcodePage
+            showHeader={false}
+            useForSelect={true}
+            onSelect={(asset: Asset) => {
+              selectedAssets.push(asset);
+              let list = selectedAssets.filter((item, pos, self) => self.findIndex(v => v.id === item.id) === pos);
+
+              setSelectedAssets(list);
+              setQrCodeModal(false);
+            }}></QrcodePage>
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button
+            onPress={() => {
+              setQrCodeModal(false);
+            }}>
+            {t('Button.Cancel')}
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+    </View>
+  );
+}
+
+
+```
+
+</TabItem>
+
+
+</Tabs>
+
+

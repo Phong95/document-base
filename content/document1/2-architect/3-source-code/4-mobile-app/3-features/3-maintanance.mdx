@@ -1,0 +1,249 @@
+---
+sidebar_position: 3
+---
+# Bảo trì
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+<Tabs>
+<TabItem value="service" label="API Service">
+
+``` typescript title="/src/api/TaskService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { MaintenancePlanExecutionResponseModel } from "../model/maintenance-plan-execution/MaintenancePlanExecutionResponseModel";
+import { MaintenancePlans } from "../model/maintenance-plan/MaintenancePlans";
+import { MaintenancePlansResponseModel } from "../model/maintenance-plan/MaintenancePlansResponseModel";
+import { HttpService } from "./HttpService";
+
+class TaskApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+    GetTask = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/manual-maintenance-plans`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<MaintenancePlansResponseModel>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<MaintenancePlansResponseModel> = await res.json();
+        return json;
+    }
+    GetExecutions = async (clientId:string,projectId:string,maintenancePlanId:string,pageIndex:number) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/maintenance-plan-executions/${maintenancePlanId}/page/${pageIndex}`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<MaintenancePlanExecutionResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<MaintenancePlanExecutionResponseModel[]> = await res.json();
+        return json;
+    }
+}
+const taskApi = new TaskApi();
+export default taskApi;
+```
+
+</TabItem>
+
+<TabItem value="typescript" label="Component">
+
+``` typescript title="/src/components/task/Task.tsx"
+import { View, Text, Platform, ScrollView, Pressable, Image } from 'react-native'
+import React, { useContext, useEffect } from 'react'
+import { GlobalStyles } from '../../styles/GlobalStyles';
+import { Badge, TouchableRipple } from 'react-native-paper';
+import { NavigationContainerRef } from '../../navigation/GlobalNavigationContainer';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AppContext from '../../context/AppContext';
+import { GlobalComponentsState } from '../../model/context/GlobalComponentsStateModel';
+import { TaskReduxModel } from '../../model/redux/TaskReduxModel';
+import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
+import { GlobalTheme } from '../../styles/GlobalThemes';
+import taskApi from '../../api/TaskService';
+import { AuthenticateReduxModel } from '../../model/redux/AuthenticateReduxModel';
+import { MaintenancePlanExecution } from '../../model/maintenance-plan-execution/MaintenancePlanExecution';
+import { PutTaskData } from '../../redux/actions/TaskAction';
+import { format } from 'date-fns';
+import LinearGradient from 'react-native-linear-gradient';
+
+export default function TaskModal() {
+    const authenticateReduxData: AuthenticateReduxModel = useSelector((state: any) => state.AuthenticateReducer);
+
+    const taskReduxModelData: TaskReduxModel = useSelector(
+        (state: any) => state.TaskReducer,
+    );
+    const dispatch = useDispatch<any>();
+
+    //#region Language
+    const { t } = useTranslation();
+    //#endregion
+    const globalContext: GlobalComponentsState = useContext(AppContext);
+
+    useEffect(() => {
+        if (taskReduxModelData.selectedTask && !taskReduxModelData.selectedTask.executions) {
+            retrieveExecution()
+        }
+    }, [taskReduxModelData.selectedTask])
+
+    const retrieveExecution = async () => {
+        if (authenticateReduxData.selectedClient && authenticateReduxData.selectedProject && taskReduxModelData.selectedTask) {
+            let res = await taskApi.GetExecutions(authenticateReduxData.selectedClient.id, authenticateReduxData.selectedProject.id, taskReduxModelData.selectedTask.id, 0);
+            if (res.successful) {
+                if (res.result) {
+                    taskReduxModelData.selectedTask.executions = res.result.map(x => new MaintenancePlanExecution(x));
+                    await dispatch(await PutTaskData(taskReduxModelData.selectedTask));
+
+                }
+                else {
+                    globalContext.openSnackbar(res.errorMessage)
+
+                }
+            }
+            else {
+                globalContext.openSnackbar(`Close report: ${res.statusCode.toString()}`)
+
+            }
+
+        }
+    }
+    return (
+        <View style={[GlobalStyles.body, GlobalStyles.displayFlex, GlobalStyles.flexDirectionColumn, GlobalStyles.backGroundColorWhite]}>
+            <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter]}>
+                <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                    NavigationContainerRef.goBack();
+                }} style={{ padding: 10, borderRadius: 20 }}
+                >
+                    <Icon
+                        name='arrow-left'
+                        color='black'
+                        size={24}
+                    />
+                </TouchableRipple>
+                <Text style={{ fontSize: 20, fontWeight: '600' }}>{t('ToDoTasks.ToDoTasks')}</Text>
+            </View>
+
+            {taskReduxModelData.selectedTask && <View>
+                <View
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}>
+                    <Image style={{ height: 150, width: 150 }} source={require('../../../assets/img/maintenance.png')}></Image>
+
+                </View>
+                <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter, GlobalStyles.justifyContentEnd]}>
+                    <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                        NavigationContainerRef.goBack();
+                    }} style={{ padding: 10, borderRadius: 20 }}
+                    >
+                        <View>
+                            <Icon
+                                name='archive'
+                                color={GlobalTheme.colors.primary}
+                                size={24}
+                            />
+                            <Badge style={{ position: 'absolute', top: -10, right: -10 }}>1</Badge>
+                        </View>
+
+                    </TouchableRipple>
+                    <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                        NavigationContainerRef.goBack();
+                    }} style={{ padding: 10, borderRadius: 20 }}
+                    >
+                        <Icon
+                            name='note-plus-outline'
+                            color={GlobalTheme.colors.primary}
+                            size={24}
+                        />
+                    </TouchableRipple>
+                </View>
+                <View style={[{ padding: 10 }, GlobalStyles.flexDirectionColumn]}>
+                    <Text style={{ fontWeight: '700', fontSize: 20, marginBottom: 5, color: GlobalTheme.colors.primary }}>{t('ToDoTasks.GeneralInformation')}</Text>
+
+                    <Text >
+                        <Text style={{ fontWeight: '700' }}>{t('ToDoTasks.TaskDetail.Title')}: </Text>
+                        {taskReduxModelData.selectedTask.title}
+                    </Text>
+                    <Text >
+                        <Text style={{ fontWeight: '700' }}>{t('ToDoTasks.TaskDetail.Description')}: </Text>
+                        {taskReduxModelData.selectedTask.description}
+                    </Text>
+                    <Text >
+                        <Text style={{ fontWeight: '700' }}>
+                            {t('ToDoTasks.TaskDetail.PIC')}:{' '}
+                        </Text>
+                    </Text>
+                    {taskReduxModelData.selectedTask.personsInCharge.map((x: string, i: number) => {
+                        return (
+                            <View
+                                key={i}
+                                style={[GlobalStyles.flexDirectionRow]}>
+                                <Icon
+                                    name="account"
+                                    color={GlobalTheme.colors.secondary}
+                                    size={18}
+                                />
+                                <Text style={{ paddingLeft: 5 }}>{x}</Text>
+                            </View>
+                        );
+                    })}
+
+                    <Text >
+                        <Text style={{ fontWeight: '700' }}>{t('ToDoTasks.ToDoTasks')}: </Text>
+                    </Text>
+                    {taskReduxModelData.selectedTask.contents.map((x: string, i: number) => {
+                        return (
+                            <View
+                                key={i}
+                                style={[GlobalStyles.flexDirectionRow]}>
+                                <Icon
+                                    name="checkbox-outline"
+                                    color={GlobalTheme.colors.secondary}
+                                    size={18}
+                                />
+                                <Text style={{ paddingLeft: 5 }}>{x}</Text>
+                            </View>
+                        );
+                    })}
+                </View>
+
+            </View>}
+            <ScrollView style={[GlobalStyles.spacer]}>
+                {
+                    (taskReduxModelData.selectedTask && taskReduxModelData.selectedTask.executions && taskReduxModelData.selectedTask.executions.length > 0) &&
+                    <View>
+                        {taskReduxModelData.selectedTask.executions.map((x: MaintenancePlanExecution, index: number) => {
+                            return <Pressable onPress={() => {
+                                // dispatch(SetSelectedTaskData(x))
+                                // NavigationContainerRef.navigate("TaskModal" )
+                            }} style={[GlobalStyles.shadow, GlobalStyles.backGroundColorWhite, GlobalStyles.displayFlex, GlobalStyles.flexDirectionRow, GlobalStyles.justifyContentSpaceBetween, GlobalStyles.alignItemsCenter, { borderRadius: 20, margin: 2.5, padding: 10 }]} key={index}>
+                                <Text>
+                                    {format(x.firstDate, 'dd/MM/yyyy HH:mm')}
+                                </Text>
+                                <Text>
+                                    {x.firstUserEmail}
+                                </Text>
+                            </Pressable>
+                        })}
+                    </View>
+                }
+            </ScrollView>
+        </View>
+    )
+}
+```
+
+</TabItem>
+
+
+</Tabs>
+

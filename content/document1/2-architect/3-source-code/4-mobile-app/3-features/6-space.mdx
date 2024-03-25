@@ -1,0 +1,207 @@
+---
+sidebar_position: 6
+---
+# Không gian
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+<Tabs>
+<TabItem value="service" label="API Service">
+
+``` typescript title="/src/api/SpaceService.ts"
+import { ApiResponse } from "../model/base/ApiResponseModel";
+import { FMInvidualReportTypeResponseModel } from "../model/invidual-report-type/FMInvidualReportTypeResponseModel";
+import { SpaceResponseModel } from "../model/space/SpaceResponseModel";
+import { HttpService } from "./HttpService";
+
+class SpaceApi extends HttpService {
+    constructor() {
+        super();
+        this.baseurl = this.publicFMReApiUrl
+    }
+
+    GetSpaces = async (clientId: string, projectId: string) => {
+        const res = await this.Get(
+            `/api/fm-mobile/v1/c-${clientId}/p-${projectId}/spaces/all`
+        );
+        if (res.status !== 200) {
+            let result = new ApiResponse<SpaceResponseModel[]>();
+            result.statusCode = res.status;
+            return result;
+        }
+        const json: ApiResponse<SpaceResponseModel[]> = await res.json();
+        return json;
+    }
+
+
+}
+const spaceApi = new SpaceApi();
+export default spaceApi;
+```
+
+</TabItem>
+
+<TabItem value="typescript" label="Component">
+
+``` typescript title="/src/components/space/SpacePage.tsx"
+import { View, Text, Platform, ScrollView, Image } from 'react-native'
+import React, { PropsWithChildren, useEffect, useState } from 'react'
+import { GlobalStyles } from '../../styles/GlobalStyles'
+import { TouchableRipple } from 'react-native-paper'
+import { NavigationContainerRef } from '../../navigation/GlobalNavigationContainer'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import { GlobalTheme } from '../../styles/GlobalThemes'
+import { ReportReduxModel } from '../../model/redux/ReportReduxModel'
+import { useDispatch, useSelector } from 'react-redux'
+import { Space } from '../../model/space/Space'
+import { useTranslation } from 'react-i18next'
+import { SpaceReduxModel } from '../../model/redux/SpaceReduxModel'
+import { SetSelectedSpace } from '../../redux/actions/SpaceAction'
+type SpaceItemProps = PropsWithChildren<{
+    item: Space;
+}>;
+export default function SpacePage() {
+
+    const spaceReduxModelData: SpaceReduxModel = useSelector(
+        (state: any) => state.SpaceReducer,
+    );
+    const { t } = useTranslation();
+    const dispatch = useDispatch<any>();
+
+    //#region Render Item
+    function SpaceItem(props: SpaceItemProps) {
+        const [space, setSpace]: [Space, React.Dispatch<Space>] = useState(props.item);
+        //const [isExpand, setIsExpand] = useState(false);
+        const setIsExpand = () => {
+            space.isExpand = !space.isExpand;
+            if (space.childSpaces?.length == 0) {
+                space.childSpaces = spaceReduxModelData.spaces.filter(x => x.parentId == props.item.id)
+            }
+            setSpace({ ...space })
+        };
+        useEffect(() => {
+
+        }, [space])
+        return (
+            <View
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}>
+                <View
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        borderBottomWidth: 1,
+                        borderBottomColor: 'rgba(0,0,0,0.1)',
+                        height: 40
+                    }}>
+                    <TouchableRipple
+                        onPress={() => {
+                            setIsExpand();
+                        }}
+                        style={{ flex: 1 }}>
+                        <View
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                flex: 1,
+                            }}>
+                            <Icon
+                                name={space.isExpand ? 'chevron-down' : 'chevron-right'}
+                                color={GlobalTheme.colors.primary}
+                                size={30}
+                            />
+                            <Text style={[{ fontWeight: space.isExpand ? '600' : '400' }]}>
+                                {space.name}
+                            </Text>
+                        </View>
+                    </TouchableRipple>
+
+                    <View
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            paddingRight: 10,
+                        }}>
+                        <TouchableRipple
+                            onPress={async () => {
+                                dispatch(SetSelectedSpace(space))
+                                NavigationContainerRef.navigate("SpaceModal");
+                                // globalContext.setSelectedSpace(space);
+                                // await retrieveImages();
+                                // navigationRef.navigate("Space Detail")
+                                // setCurrentSpace(space);
+                                // refRBSheet.current.open();
+                            }}>
+                            <Icon
+                                name="information"
+                                color={GlobalTheme.colors.primary}
+                                size={25}
+                            />
+                        </TouchableRipple>
+                    </View>
+                </View>
+
+                <View style={{ paddingLeft: 10 }}>
+                    {space.childSpaces?.length > 0 &&
+                        space.isExpand &&
+                        space.childSpaces.map((x: Space, i: number) => {
+                            return <SpaceItem key={i} item={x}></SpaceItem>;
+                        })}
+                </View>
+            </View>
+        );
+    }
+    //#endregion
+
+    return (
+        <View style={[GlobalStyles.body, GlobalStyles.displayFlex, GlobalStyles.flexDirectionColumn, GlobalStyles.backGroundColorWhite]}>
+            <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter, GlobalStyles.justifyContentSpaceBetween]}>
+                <View style={[GlobalStyles.flexDirectionRow, GlobalStyles.alignItemsCenter]}>
+                    <TouchableRipple borderless={Platform.OS === 'android' ? true : false} onPress={() => {
+                        NavigationContainerRef.goBack()
+                    }} style={{ padding: 10, borderRadius: 20 }}
+                    >
+                        <Icon
+                            name='arrow-left'
+                            color='black'
+                            size={24}
+                        />
+                    </TouchableRipple>
+                    <Text style={{ fontSize: 20, fontWeight: '600' }}>{t("Space.Header")}</Text>
+                </View>
+
+            </View>
+            <View
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}>
+                <Image style={{ height: 150, width: 150 }} source={require('../../../assets/img/location.png')}></Image>
+
+            </View>
+            <ScrollView>
+                {spaceReduxModelData.spaces?.length > 0
+                    ? spaceReduxModelData.spaces.filter(x => !x.parentId).map((x: Space, i: number) => {
+                        return <SpaceItem key={i} item={x}></SpaceItem>;
+                    })
+                    : null}
+            </ScrollView>
+
+        </View>
+    )
+}
+```
+
+</TabItem>
+
+
+</Tabs>
+
